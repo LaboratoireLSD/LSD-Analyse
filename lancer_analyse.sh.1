@@ -1,0 +1,126 @@
+.TH lancer_analyse.sh 1 "Version 1.12: août 2012" GNU/Linux
+.SH NOM
+lancer_analyse.sh \- utilitaire de lancement du programme C++ Analyse
+.SH SYNOPSIS
+.B lancer_analyse.sh [-? | -h | --help]
+.I répertoire-cible
+.I [fichier-config]
+.SH DESCRIPTION
+Le programme
+.B Analyse
+et son utilitaire de lancement
+.B lancer_analyse.sh
+sont des outils configurables servant à l'analyse des résultats obtenus 
+suite au lancement du programme
+.I SCHNAPS
+(SynCHroNous Agent- and Population-based Simulator).
+.SH OPTIONS
+.B
+.IP "Aucun argument"
+.br
+Renseigne l'utilisateur sur l'usage du script.
+.B
+.IP "-?, -h, --help"
+.br
+Affiche cette page d'aide. Cette option doit être le premier argument. Tous les arguments suivants sont ignorés. Le script doit donc être relancé si une analyse désire être faite.
+.I
+.IP répertoire-cible
+.br
+Le répertoire du projet à analyser.
+.I
+.IP [fichier-config]
+.br
+Fichier de configuration à utiliser pour l'analyse. Si aucun n'est fourni, alors le programme essaie de lire le fichier 
+.I default.conf
+situé dans ".../répertoire-cible/Analyse/". Si ce fichier est inexistant, un template est copié à cet endroit afin d'aider et inciter l'utilisateur à se bâtir une configuration personnalisée.
+.SH FICHIERS ET RÉPERTOIRES
+.I x.conf
+.RS
+Fichier de configuration pour l'analyse. Son nom, son extension ou même son emplacement n'ont aucune importance. Sa syntaxe est définie à la section suivante.
+.RE
+.P
+.I répertoire-cible/Analyse/x.aux
+.RS
+Fichier binaire contenant les résultats du parsing. Automatiquement chargé en mémoire si le script est relancé avec le même fichier de configuration (nom similaire) contenant les mêmes options de parsing -- sinon, il est simplement recréé avec les résultats du nouveau parsing. Plusieurs fichiers binaires peuvent coexister si plusieurs fichiers de configurations (noms différents) sont employés.
+.RE
+.P
+.I répertoire-cible/Analyse/x.txt
+.RS
+Fichier texte contenant les résultats de l'analyse. 'x' fait référence au nom de la configuration utilisée. Il est réécrit à chaque fois que le script est relancé avec le même fichier de configuration.
+.SH SYNTAXE DU FICHIER DE CONFIGURATION
+.SS Général:
+Par défaut, le programme compte le nombre d'occurences des variables booléennes (true/false) et accumule les variables numériques. S'il s'agit des comportements désirés, nul besoin d'écrire un fichier de configuration.
+
+Les tampons utilisés supportent jusqu'à 256 caractères par ligne. Un simple « #define » dans le fichier .cpp définit cette limite. Elle peut donc être changée facilement dans l'éventualité où celle-ci serait atteinte.
+.P
+La syntaxe du fichier de configuration est basée sur les fichiers ".ini". Le nom d'une section est entre crochets ("[ ]"). Les commentaire se font au moyen du symbole "#" ou ";". Les opérations invalides sont spécifiées à l'usager. Les espaces et les les lignes vides ("whitespace") sont toujours ignorées.
+.P
+Les variables dans les calculs et expressions booléennes doivent être délimitées par des guillements anglais (" "). Ne pas en mettre pour les autres sections. Les calculs et expressions booléennes doivent contenir au moins une variable.
+.P
+Il n'y a pas de priorité dans les opérations d'implémenté, à l'exception des parenthèses dans les calculs.
+.P
+Dans les calculs, il est possible de mettre un nombre négatif, mais pas une expression.
+.p
+Les étiquette (var = ...) agissent comment des noms de variables et permettent la réutilisation d'expressions et de résultats. Elles sont facultatives, sauf pour ce qui est des expressions booléennes.
+.P
+Respecter autant que possible l'ordre des sections tel qu'énoncé ci-dessous, car il n'est pas possible d'utiliser une variable qui n'a pas encore été définie. (ou qui l'est dans une section inférieure)
+.SS [proportions]
+Compte le nombre d'occurence de chaque valeur. À considérer pour les valeurs discrètes et les chaînes de caractères. Doit être une variable standard (présente dans le fichier "Summary.gz" / non créée par l'usager au moyen du fichier de configuration).
+.SS "[calculs (local)]"
+Opérateurs supportés par les calculs: +, -, *, /, ^ et les parenthèses.
+.P
+Effectue le calcul donné pour chaque individu. Sert à être combiné avec les expressions booléennes -- sinon, préférer les calculs globaux, car cela augmente la durée du parsing, et une seule division par zéro chez n'importe quel individu met fin au programme (en affichant un message d'erreur). Comme davantage de calculs sont faits, le risque de division par zéro est plus grand.
+.P
+.B Exemple:
+.br
+ma_var = "Cout" - "Cout(1)"
+.SS "[expressions booleennes]"
+Les variables booléennes standards sont détectées automatiquement: nul besoin de les spécifier ici. L'étiquette est obligatoire afin de forcer un nom plus clair que l'expression elle-même. Chaque variable nécessite un comparateur ("<", ">", "<=", ">=", "==", ou "!=").
+.P
+Seuls les opérateurs "&&" ('et' logique) et "||" ('ou' logique) peuvent séparer deux variables et leur comparateur respectif. Les expressions sont évaluées de gauche vers la droite. Aucun usage de parenthèses n'est possible.
+.P
+.B Exemple:
+.br
+mon_bool = "Bebe_MHF" == true && ma_var > 10000
+.SS "[calculs (conditionnel)]"
+Il s'agit encore une fois d'un calcul sur chaque individu -- une variante des calculs locaux plus haut. La seule différence est que ce calcul ne sera évalué que si une certaine condition booléenne est vraie. Cela permet notamment de séparer des coûts selon l'état des invididus.
+.P
+.B Exemple:
+.br
+"Cout" * (2 / 3)
+.br
+condition = mon_bool
+.SS "[calculs (global)]"
+À partir de cette section, toutes les options peuvent être changées sans que cela ne nécessite la création d'un nouveau fichier binaire.
+.P
+Une division par zéro entraîne une mention spéciale, mais ne met pas fin au programme.
+.P
+.B Exemple:
+.br
+("Cout" - "Cout(1)") / 267
+.SS [ICER]
+.B Format :
+.br
+variable = nom de la variable
+.br
+inv = 0/1 (0 ou 1)
+.P
+Le "1" peut être remplacé par n'importe quel entier non nul. Si inversion à 0(aucune inversion), alors la soustraction entre les scénarios est faite comme pour le comparateur (bas vers haut). Habituellement, un évènement qu'on cherche à éviter a une inversion (inv != 0).
+.P
+Le comparateur est la variable qui sert de numérateur et qui sert à ordonner les scénarios. Souvent un coût.
+.P
+.B Exemple:
+.br
+variable = Bebe_MHF
+.br
+inv = 0
+.br
+variable = ma_var
+.br
+inv = 1
+.br
+comparateur = Cout
+.SS "[ne pas afficher]"
+Variables que l'on ne désire pas afficher dans les résultats. Il demeure possible de les utiliser dans les expressions et les calculs.
+.SH AUTEUR
+Antoine Bois <antoine.bois.1@ulaval.ca> (programmes Bash et C++)
